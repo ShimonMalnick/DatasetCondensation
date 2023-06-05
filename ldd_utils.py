@@ -40,6 +40,7 @@ CLIP_DEFAULT_MODEL = '32-B'
 CLIP_LATENTS_DIM = 512
 DATASETS_CHOICES = ["MNIST", "FashionMNIST", "SVHN", "CIFAR10", "CIFAR100", "TinyImageNet"]
 
+
 def process_args(latent_distillation=False):
     args = get_args(latent_distillation=latent_distillation)
     args.outer_loop, args.inner_loop = get_loops(args.ipc)
@@ -53,7 +54,7 @@ def process_args(latent_distillation=False):
         os.makedirs(args.save_path)
     save_dict_as_json(args, os.path.join(args.save_path, 'args.json'))
     if args.use_wandb:
-        wandb.init(project='DSA', name=run_name, config=args)
+        wandb.init(project='latent-dataset-distillation', name=run_name, config=args)
 
     # logging config, logging to both a file and stdout
     file_handler = logging.FileHandler(filename=f"{args.save_path}/out.txt")
@@ -102,7 +103,8 @@ def get_args(parser=None, latent_distillation=False) -> EasyDict:
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         parser = DefaultsArgumentParser(parser)
         parser.add_argument('--use_wandb', default='false', type=str2bool, help='whether to use wandb')
-        parser.add_argument('--wandb_project', default='latent-dataset-distillation', type=str, help='wandb project name')
+        parser.add_argument('--wandb_project', default='latent-dataset-distillation', type=str,
+                            help='wandb project name')
         if latent_distillation:
             parser.add_argument('--clip_model', default='32-B', choices=list(CLIP_MODELS.keys()), type=str,
                                 help='which network architecture to run')
@@ -131,7 +133,7 @@ def get_args(parser=None, latent_distillation=False) -> EasyDict:
         parser.add_argument('--dsa_strategy', type=str, default='None',
                             help='differentiable Siamese augmentation strategy')
         parser.add_argument('--data_path', type=str, default='/home/shimon/research/datasets', help='dataset path')
-        parser.add_argument('--save_path', type=str, default='result', help='path to save results')
+        parser.add_argument('--save_path', type=str, default='/home/shimon/research/latent_distillation/result', help='path to save results')
         parser.add_argument('--dis_metric', type=str, default='ours', help='distance metric')
 
     args = parser.parse_args()

@@ -1,4 +1,5 @@
 import os
+import pdb
 import time
 import copy
 import numpy as np
@@ -15,7 +16,7 @@ def main_vanilla():
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     eval_it_pool = np.arange(0, args.Iteration + 1,
-                             500).tolist() if args.eval_mode == 'S' or args.eval_mode == 'SS' else [
+                             min(500, args.Iteration // 2)).tolist() if args.eval_mode == 'S' or args.eval_mode == 'SS' else [
         args.Iteration]  # The list of iterations when we evaluate models and record results.
     print('eval_it_pool: ', eval_it_pool)
     channel, im_size, num_classes, class_names, mean, std, dst_train, dst_test, testloader = get_dataset(args.dataset,
@@ -207,6 +208,7 @@ def main_vanilla():
                                                                                                    args.ipc)))
 
     print('\n==================== Final Results ====================\n')
+    pdb.set_trace()
     for key in model_eval_pool:
         accs = accs_all_exps[key]
         print('Run %d experiments, train on %s, evaluate %d random %s, mean  = %.2f%%  std = %.2f%%' % (
