@@ -1,3 +1,4 @@
+import json
 import time
 import os
 import numpy as np
@@ -9,6 +10,7 @@ from torchvision import datasets, transforms
 from scipy.ndimage.interpolation import rotate as scipyrotate
 from networks import MLP, ConvNet, LeNet, AlexNet, AlexNetBN, VGG11, VGG11BN, ResNet18, ResNet18BN_AP, ResNet18BN
 
+
 def get_dataset(dataset, data_path):
     if dataset == 'MNIST':
         channel = 1
@@ -17,7 +19,7 @@ def get_dataset(dataset, data_path):
         mean = [0.1307]
         std = [0.3081]
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=mean, std=std)])
-        dst_train = datasets.MNIST(data_path, train=True, download=True, transform=transform) # no augmentation
+        dst_train = datasets.MNIST(data_path, train=True, download=True, transform=transform)  # no augmentation
         dst_test = datasets.MNIST(data_path, train=False, download=True, transform=transform)
         class_names = [str(c) for c in range(num_classes)]
 
@@ -28,7 +30,7 @@ def get_dataset(dataset, data_path):
         mean = [0.2861]
         std = [0.3530]
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=mean, std=std)])
-        dst_train = datasets.FashionMNIST(data_path, train=True, download=True, transform=transform) # no augmentation
+        dst_train = datasets.FashionMNIST(data_path, train=True, download=True, transform=transform)  # no augmentation
         dst_test = datasets.FashionMNIST(data_path, train=False, download=True, transform=transform)
         class_names = dst_train.classes
 
@@ -50,7 +52,7 @@ def get_dataset(dataset, data_path):
         mean = [0.4914, 0.4822, 0.4465]
         std = [0.2023, 0.1994, 0.2010]
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=mean, std=std)])
-        dst_train = datasets.CIFAR10(data_path, train=True, download=True, transform=transform) # no augmentation
+        dst_train = datasets.CIFAR10(data_path, train=True, download=True, transform=transform)  # no augmentation
         dst_test = datasets.CIFAR10(data_path, train=False, download=True, transform=transform)
         class_names = dst_train.classes
 
@@ -61,7 +63,7 @@ def get_dataset(dataset, data_path):
         mean = [0.5071, 0.4866, 0.4409]
         std = [0.2673, 0.2564, 0.2762]
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=mean, std=std)])
-        dst_train = datasets.CIFAR100(data_path, train=True, download=True, transform=transform) # no augmentation
+        dst_train = datasets.CIFAR100(data_path, train=True, download=True, transform=transform)  # no augmentation
         dst_test = datasets.CIFAR100(data_path, train=False, download=True, transform=transform)
         class_names = dst_train.classes
 
@@ -80,7 +82,7 @@ def get_dataset(dataset, data_path):
         images_train = images_train.detach().float() / 255.0
         labels_train = labels_train.detach()
         for c in range(channel):
-            images_train[:,c] = (images_train[:,c] - mean[c])/std[c]
+            images_train[:, c] = (images_train[:, c] - mean[c]) / std[c]
         dst_train = TensorDataset(images_train, labels_train)  # no augmentation
 
         images_val = data['images_val']
@@ -94,16 +96,14 @@ def get_dataset(dataset, data_path):
         dst_test = TensorDataset(images_val, labels_val)  # no augmentation
 
     else:
-        exit('unknown dataset: %s'%dataset)
-
+        exit('unknown dataset: %s' % dataset)
 
     testloader = torch.utils.data.DataLoader(dst_test, batch_size=256, shuffle=False, num_workers=0)
     return channel, im_size, num_classes, class_names, mean, std, dst_train, dst_test, testloader
 
 
-
 class TensorDataset(Dataset):
-    def __init__(self, images, labels): # images: n x c x h x w tensor
+    def __init__(self, images, labels):  # images: n x c x h x w tensor
         self.images = images.detach().float()
         self.labels = labels.detach()
 
@@ -114,21 +114,23 @@ class TensorDataset(Dataset):
         return self.images.shape[0]
 
 
-
 def get_default_convnet_setting():
     net_width, net_depth, net_act, net_norm, net_pooling = 128, 3, 'relu', 'instancenorm', 'avgpooling'
     return net_width, net_depth, net_act, net_norm, net_pooling
 
 
-
-def get_network(model, channel, num_classes, im_size=(32, 32)):
+def get_network(model, channel, num_classes, im_size=(32, 32), latents_size=None):
     torch.random.manual_seed(int(time.time() * 1000) % 100000)
     net_width, net_depth, net_act, net_norm, net_pooling = get_default_convnet_setting()
 
     if model == 'MLP':
-        net = MLP(channel=channel, num_classes=num_classes)
+        input_shape = im_size[0] * im_size[1] * channel
+        if latents_size is not None:
+            input_shape = latents_size
+        net = MLP(channel=channel, num_classes=num_classes, input_shape=input_shape)
     elif model == 'ConvNet':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth, net_act=net_act, net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth,
+                      net_act=net_act, net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
     elif model == 'LeNet':
         net = LeNet(channel=channel, num_classes=num_classes)
     elif model == 'AlexNet':
@@ -136,7 +138,7 @@ def get_network(model, channel, num_classes, im_size=(32, 32)):
     elif model == 'AlexNetBN':
         net = AlexNetBN(channel=channel, num_classes=num_classes)
     elif model == 'VGG11':
-        net = VGG11( channel=channel, num_classes=num_classes)
+        net = VGG11(channel=channel, num_classes=num_classes)
     elif model == 'VGG11BN':
         net = VGG11BN(channel=channel, num_classes=num_classes)
     elif model == 'ResNet18':
@@ -147,60 +149,81 @@ def get_network(model, channel, num_classes, im_size=(32, 32)):
         net = ResNet18BN(channel=channel, num_classes=num_classes)
 
     elif model == 'ConvNetD1':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=1, net_act=net_act, net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=1, net_act=net_act,
+                      net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
     elif model == 'ConvNetD2':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=2, net_act=net_act, net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=2, net_act=net_act,
+                      net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
     elif model == 'ConvNetD3':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=3, net_act=net_act, net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=3, net_act=net_act,
+                      net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
     elif model == 'ConvNetD4':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=4, net_act=net_act, net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=4, net_act=net_act,
+                      net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
 
     elif model == 'ConvNetW32':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=32, net_depth=net_depth, net_act=net_act, net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=32, net_depth=net_depth, net_act=net_act,
+                      net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
     elif model == 'ConvNetW64':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=64, net_depth=net_depth, net_act=net_act, net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=64, net_depth=net_depth, net_act=net_act,
+                      net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
     elif model == 'ConvNetW128':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=128, net_depth=net_depth, net_act=net_act, net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=128, net_depth=net_depth, net_act=net_act,
+                      net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
     elif model == 'ConvNetW256':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=256, net_depth=net_depth, net_act=net_act, net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=256, net_depth=net_depth, net_act=net_act,
+                      net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
 
     elif model == 'ConvNetAS':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth, net_act='sigmoid', net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth,
+                      net_act='sigmoid', net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
     elif model == 'ConvNetAR':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth, net_act='relu', net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth,
+                      net_act='relu', net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
     elif model == 'ConvNetAL':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth, net_act='leakyrelu', net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth,
+                      net_act='leakyrelu', net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
     elif model == 'ConvNetASwish':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth, net_act='swish', net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth,
+                      net_act='swish', net_norm=net_norm, net_pooling=net_pooling, im_size=im_size)
     elif model == 'ConvNetASwishBN':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth, net_act='swish', net_norm='batchnorm', net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth,
+                      net_act='swish', net_norm='batchnorm', net_pooling=net_pooling, im_size=im_size)
 
     elif model == 'ConvNetNN':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth, net_act=net_act, net_norm='none', net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth,
+                      net_act=net_act, net_norm='none', net_pooling=net_pooling, im_size=im_size)
     elif model == 'ConvNetBN':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth, net_act=net_act, net_norm='batchnorm', net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth,
+                      net_act=net_act, net_norm='batchnorm', net_pooling=net_pooling, im_size=im_size)
     elif model == 'ConvNetLN':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth, net_act=net_act, net_norm='layernorm', net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth,
+                      net_act=net_act, net_norm='layernorm', net_pooling=net_pooling, im_size=im_size)
     elif model == 'ConvNetIN':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth, net_act=net_act, net_norm='instancenorm', net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth,
+                      net_act=net_act, net_norm='instancenorm', net_pooling=net_pooling, im_size=im_size)
     elif model == 'ConvNetGN':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth, net_act=net_act, net_norm='groupnorm', net_pooling=net_pooling, im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth,
+                      net_act=net_act, net_norm='groupnorm', net_pooling=net_pooling, im_size=im_size)
 
     elif model == 'ConvNetNP':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth, net_act=net_act, net_norm=net_norm, net_pooling='none', im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth,
+                      net_act=net_act, net_norm=net_norm, net_pooling='none', im_size=im_size)
     elif model == 'ConvNetMP':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth, net_act=net_act, net_norm=net_norm, net_pooling='maxpooling', im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth,
+                      net_act=net_act, net_norm=net_norm, net_pooling='maxpooling', im_size=im_size)
     elif model == 'ConvNetAP':
-        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth, net_act=net_act, net_norm=net_norm, net_pooling='avgpooling', im_size=im_size)
+        net = ConvNet(channel=channel, num_classes=num_classes, net_width=net_width, net_depth=net_depth,
+                      net_act=net_act, net_norm=net_norm, net_pooling='avgpooling', im_size=im_size)
 
     else:
         net = None
-        exit('unknown model: %s'%model)
+        exit('unknown model: %s' % model)
 
     gpu_num = torch.cuda.device_count()
-    if gpu_num>0:
+    if gpu_num > 0:
         device = 'cuda'
-        if gpu_num>1:
+        if gpu_num > 1:
             net = nn.DataParallel(net)
     else:
         device = 'cpu'
@@ -209,31 +232,29 @@ def get_network(model, channel, num_classes, im_size=(32, 32)):
     return net
 
 
-
 def get_time():
     return str(time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime()))
 
 
-
 def distance_wb(gwr, gws):
     shape = gwr.shape
-    if len(shape) == 4: # conv, out*in*h*w
+    if len(shape) == 4:  # conv, out*in*h*w
         gwr = gwr.reshape(shape[0], shape[1] * shape[2] * shape[3])
         gws = gws.reshape(shape[0], shape[1] * shape[2] * shape[3])
     elif len(shape) == 3:  # layernorm, C*h*w
         gwr = gwr.reshape(shape[0], shape[1] * shape[2])
         gws = gws.reshape(shape[0], shape[1] * shape[2])
-    elif len(shape) == 2: # linear, out*in
+    elif len(shape) == 2:  # linear, out*in
         tmp = 'do nothing'
-    elif len(shape) == 1: # batchnorm/instancenorm, C; groupnorm x, bias
+    elif len(shape) == 1:  # batchnorm/instancenorm, C; groupnorm x, bias
         gwr = gwr.reshape(1, shape[0])
         gws = gws.reshape(1, shape[0])
         return torch.tensor(0, dtype=torch.float, device=gwr.device)
 
-    dis_weight = torch.sum(1 - torch.sum(gwr * gws, dim=-1) / (torch.norm(gwr, dim=-1) * torch.norm(gws, dim=-1) + 0.000001))
+    dis_weight = torch.sum(
+        1 - torch.sum(gwr * gws, dim=-1) / (torch.norm(gwr, dim=-1) * torch.norm(gws, dim=-1) + 0.000001))
     dis = dis_weight
     return dis
-
 
 
 def match_loss(gw_syn, gw_real, args):
@@ -253,7 +274,7 @@ def match_loss(gw_syn, gw_real, args):
             gw_syn_vec.append(gw_syn[ig].reshape((-1)))
         gw_real_vec = torch.cat(gw_real_vec, dim=0)
         gw_syn_vec = torch.cat(gw_syn_vec, dim=0)
-        dis = torch.sum((gw_syn_vec - gw_real_vec)**2)
+        dis = torch.sum((gw_syn_vec - gw_real_vec) ** 2)
 
     elif args.dis_metric == 'cos':
         gw_real_vec = []
@@ -263,13 +284,13 @@ def match_loss(gw_syn, gw_real, args):
             gw_syn_vec.append(gw_syn[ig].reshape((-1)))
         gw_real_vec = torch.cat(gw_real_vec, dim=0)
         gw_syn_vec = torch.cat(gw_syn_vec, dim=0)
-        dis = 1 - torch.sum(gw_real_vec * gw_syn_vec, dim=-1) / (torch.norm(gw_real_vec, dim=-1) * torch.norm(gw_syn_vec, dim=-1) + 0.000001)
+        dis = 1 - torch.sum(gw_real_vec * gw_syn_vec, dim=-1) / (
+                    torch.norm(gw_real_vec, dim=-1) * torch.norm(gw_syn_vec, dim=-1) + 0.000001)
 
     else:
-        exit('unknown distance function: %s'%args.dis_metric)
+        exit('unknown distance function: %s' % args.dis_metric)
 
     return dis
-
 
 
 def get_loops(ipc):
@@ -289,9 +310,8 @@ def get_loops(ipc):
         outer_loop, inner_loop = 50, 10
     else:
         outer_loop, inner_loop = 0, 0
-        exit('loop hyper-parameters are not defined for %d ipc'%ipc)
+        exit('loop hyper-parameters are not defined for %d ipc' % ipc)
     return outer_loop, inner_loop
-
 
 
 def epoch(mode, dataloader, net, optimizer, criterion, args, aug):
@@ -318,7 +338,7 @@ def epoch(mode, dataloader, net, optimizer, criterion, args, aug):
         loss = criterion(output, lab)
         acc = np.sum(np.equal(np.argmax(output.cpu().data.numpy(), axis=-1), lab.cpu().data.numpy()))
 
-        loss_avg += loss.item()*n_b
+        loss_avg += loss.item() * n_b
         acc_avg += acc
         num_exp += n_b
 
@@ -333,14 +353,13 @@ def epoch(mode, dataloader, net, optimizer, criterion, args, aug):
     return loss_avg, acc_avg
 
 
-
 def evaluate_synset(it_eval, net, images_train, labels_train, testloader, args):
     net = net.to(args.device)
     images_train = images_train.to(args.device)
     labels_train = labels_train.to(args.device)
     lr = float(args.lr_net)
     Epoch = int(args.epoch_eval_train)
-    lr_schedule = [Epoch//2+1]
+    lr_schedule = [Epoch // 2 + 1]
     optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=0.0005)
     criterion = nn.CrossEntropyLoss().to(args.device)
 
@@ -348,18 +367,18 @@ def evaluate_synset(it_eval, net, images_train, labels_train, testloader, args):
     trainloader = torch.utils.data.DataLoader(dst_train, batch_size=args.batch_train, shuffle=True, num_workers=0)
 
     start = time.time()
-    for ep in range(Epoch+1):
-        loss_train, acc_train = epoch('train', trainloader, net, optimizer, criterion, args, aug = True)
+    for ep in range(Epoch + 1):
+        loss_train, acc_train = epoch('train', trainloader, net, optimizer, criterion, args, aug=True)
         if ep in lr_schedule:
             lr *= 0.1
             optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=0.0005)
 
     time_train = time.time() - start
-    loss_test, acc_test = epoch('test', testloader, net, optimizer, criterion, args, aug = False)
-    print('%s Evaluate_%02d: epoch = %04d train time = %d s train loss = %.6f train acc = %.4f, test acc = %.4f' % (get_time(), it_eval, Epoch, int(time_train), loss_train, acc_train, acc_test))
+    loss_test, acc_test = epoch('test', testloader, net, optimizer, criterion, args, aug=False)
+    print('%s Evaluate_%02d: epoch = %04d train time = %d s train loss = %.6f train acc = %.4f, test acc = %.4f' % (
+    get_time(), it_eval, Epoch, int(time_train), loss_train, acc_train, acc_test))
 
     return net, acc_train, acc_test
-
 
 
 def augment(images, dc_aug_param, device):
@@ -375,15 +394,15 @@ def augment(images, dc_aug_param, device):
         shape = images.shape
         mean = []
         for c in range(shape[1]):
-            mean.append(float(torch.mean(images[:,c])))
+            mean.append(float(torch.mean(images[:, c])))
 
         def cropfun(i):
-            im_ = torch.zeros(shape[1],shape[2]+crop*2,shape[3]+crop*2, dtype=torch.float, device=device)
+            im_ = torch.zeros(shape[1], shape[2] + crop * 2, shape[3] + crop * 2, dtype=torch.float, device=device)
             for c in range(shape[1]):
                 im_[c] = mean[c]
-            im_[:, crop:crop+shape[2], crop:crop+shape[3]] = images[i]
-            r, c = np.random.permutation(crop*2)[0], np.random.permutation(crop*2)[0]
-            images[i] = im_[:, r:r+shape[2], c:c+shape[3]]
+            im_[:, crop:crop + shape[2], crop:crop + shape[3]] = images[i]
+            r, c = np.random.permutation(crop * 2)[0], np.random.permutation(crop * 2)[0]
+            images[i] = im_[:, r:r + shape[2], c:c + shape[3]]
 
         def scalefun(i):
             h = int((np.random.uniform(1 - scale, 1 + scale)) * shape[2])
@@ -399,7 +418,8 @@ def augment(images, dc_aug_param, device):
             images[i] = im_[:, r:r + shape[2], c:c + shape[3]]
 
         def rotatefun(i):
-            im_ = scipyrotate(images[i].cpu().data.numpy(), angle=np.random.randint(-rotate, rotate), axes=(-2, -1), cval=np.mean(mean))
+            im_ = scipyrotate(images[i].cpu().data.numpy(), angle=np.random.randint(-rotate, rotate), axes=(-2, -1),
+                              cval=np.mean(mean))
             r = int((im_.shape[-2] - shape[-2]) / 2)
             c = int((im_.shape[-1] - shape[-1]) / 2)
             images[i] = torch.tensor(im_[:, r:r + shape[-2], c:c + shape[-1]], dtype=torch.float, device=device)
@@ -407,11 +427,10 @@ def augment(images, dc_aug_param, device):
         def noisefun(i):
             images[i] = images[i] + noise * torch.randn(shape[1:], dtype=torch.float, device=device)
 
-
         augs = strategy.split('_')
 
         for i in range(shape[0]):
-            choice = np.random.permutation(augs)[0] # randomly implement one augmentation
+            choice = np.random.permutation(augs)[0]  # randomly implement one augmentation
             if choice == 'crop':
                 cropfun(i)
             elif choice == 'scale':
@@ -422,7 +441,6 @@ def augment(images, dc_aug_param, device):
                 noisefun(i)
 
     return images
-
 
 
 def get_daparam(dataset, model, model_eval, ipc):
@@ -439,30 +457,31 @@ def get_daparam(dataset, model, model_eval, ipc):
     if dataset == 'MNIST':
         dc_aug_param['strategy'] = 'crop_scale_rotate'
 
-    if model_eval in ['ConvNetBN']: # Data augmentation makes model training with Batch Norm layer easier.
+    if model_eval in ['ConvNetBN']:  # Data augmentation makes model training with Batch Norm layer easier.
         dc_aug_param['strategy'] = 'crop_noise'
 
     return dc_aug_param
 
 
 def get_eval_pool(eval_mode, model, model_eval):
-    if eval_mode == 'M': # multiple architectures
+    if eval_mode == 'M':  # multiple architectures
         model_eval_pool = ['MLP', 'ConvNet', 'LeNet', 'AlexNet', 'VGG11', 'ResNet18']
     elif eval_mode == 'B':  # multiple architectures with BatchNorm for DM experiments
         model_eval_pool = ['ConvNetBN', 'ConvNetASwishBN', 'AlexNetBN', 'VGG11BN', 'ResNet18BN']
-    elif eval_mode == 'W': # ablation study on network width
+    elif eval_mode == 'W':  # ablation study on network width
         model_eval_pool = ['ConvNetW32', 'ConvNetW64', 'ConvNetW128', 'ConvNetW256']
-    elif eval_mode == 'D': # ablation study on network depth
+    elif eval_mode == 'D':  # ablation study on network depth
         model_eval_pool = ['ConvNetD1', 'ConvNetD2', 'ConvNetD3', 'ConvNetD4']
-    elif eval_mode == 'A': # ablation study on network activation function
+    elif eval_mode == 'A':  # ablation study on network activation function
         model_eval_pool = ['ConvNetAS', 'ConvNetAR', 'ConvNetAL', 'ConvNetASwish']
-    elif eval_mode == 'P': # ablation study on network pooling layer
+    elif eval_mode == 'P':  # ablation study on network pooling layer
         model_eval_pool = ['ConvNetNP', 'ConvNetMP', 'ConvNetAP']
-    elif eval_mode == 'N': # ablation study on network normalization layer
+    elif eval_mode == 'N':  # ablation study on network normalization layer
         model_eval_pool = ['ConvNetNN', 'ConvNetBN', 'ConvNetLN', 'ConvNetIN', 'ConvNetGN']
-    elif eval_mode == 'S': # itself
+    elif eval_mode == 'S':  # itself
         if 'BN' in model:
-            print('Attention: Here I will replace BN with IN in evaluation, as the synthetic set is too small to measure BN hyper-parameters.')
+            print(
+                'Attention: Here I will replace BN with IN in evaluation, as the synthetic set is too small to measure BN hyper-parameters.')
         model_eval_pool = [model[:model.index('BN')]] if 'BN' in model else [model]
     elif eval_mode == 'SS':  # itself
         model_eval_pool = [model]
@@ -473,12 +492,12 @@ def get_eval_pool(eval_mode, model, model_eval):
 
 class ParamDiffAug():
     def __init__(self):
-        self.aug_mode = 'S' #'multiple or single'
+        self.aug_mode = 'S'  # 'multiple or single'
         self.prob_flip = 0.5
         self.ratio_scale = 1.2
         self.ratio_rotate = 15.0
         self.ratio_crop_pad = 0.125
-        self.ratio_cutout = 0.5 # the size would be 0.5x0.5
+        self.ratio_cutout = 0.5  # the size would be 0.5x0.5
         self.brightness = 1.0
         self.saturation = 2.0
         self.contrast = 0.5
@@ -492,7 +511,7 @@ def set_seed_DiffAug(param):
         param.latestseed += 1
 
 
-def DiffAugment(x, strategy='', seed = -1, param = None):
+def DiffAugment(x, strategy='', seed=-1, param=None):
     if strategy == 'None' or strategy == 'none' or strategy == '':
         return x
 
@@ -504,7 +523,7 @@ def DiffAugment(x, strategy='', seed = -1, param = None):
     param.latestseed = seed
 
     if strategy:
-        if param.aug_mode == 'M': # original
+        if param.aug_mode == 'M':  # original
             for p in strategy.split('_'):
                 for f in AUGMENT_FNS[p]:
                     x = f(x, param)
@@ -515,7 +534,7 @@ def DiffAugment(x, strategy='', seed = -1, param = None):
             for f in AUGMENT_FNS[p]:
                 x = f(x, param)
         else:
-            exit('unknown augmentation mode: %s'%param.aug_mode)
+            exit('unknown augmentation mode: %s' % param.aug_mode)
         x = x.contiguous()
     return x
 
@@ -526,27 +545,27 @@ def rand_scale(x, param):
     # sx, sy: (0, +oo), 1: orignial size, 0.5: enlarge 2 times
     ratio = param.ratio_scale
     set_seed_DiffAug(param)
-    sx = torch.rand(x.shape[0]) * (ratio - 1.0/ratio) + 1.0/ratio
+    sx = torch.rand(x.shape[0]) * (ratio - 1.0 / ratio) + 1.0 / ratio
     set_seed_DiffAug(param)
-    sy = torch.rand(x.shape[0]) * (ratio - 1.0/ratio) + 1.0/ratio
-    theta = [[[sx[i], 0,  0],
-            [0,  sy[i], 0],] for i in range(x.shape[0])]
+    sy = torch.rand(x.shape[0]) * (ratio - 1.0 / ratio) + 1.0 / ratio
+    theta = [[[sx[i], 0, 0],
+              [0, sy[i], 0], ] for i in range(x.shape[0])]
     theta = torch.tensor(theta, dtype=torch.float)
-    if param.Siamese: # Siamese augmentation:
+    if param.Siamese:  # Siamese augmentation:
         theta[:] = theta[0]
     grid = F.affine_grid(theta, x.shape).to(x.device)
     x = F.grid_sample(x, grid)
     return x
 
 
-def rand_rotate(x, param): # [-180, 180], 90: anticlockwise 90 degree
+def rand_rotate(x, param):  # [-180, 180], 90: anticlockwise 90 degree
     ratio = param.ratio_rotate
     set_seed_DiffAug(param)
     theta = (torch.rand(x.shape[0]) - 0.5) * 2 * ratio / 180 * float(np.pi)
     theta = [[[torch.cos(theta[i]), torch.sin(-theta[i]), 0],
-        [torch.sin(theta[i]), torch.cos(theta[i]),  0],]  for i in range(x.shape[0])]
+              [torch.sin(theta[i]), torch.cos(theta[i]), 0], ] for i in range(x.shape[0])]
     theta = torch.tensor(theta, dtype=torch.float)
-    if param.Siamese: # Siamese augmentation:
+    if param.Siamese:  # Siamese augmentation:
         theta[:] = theta[0]
     grid = F.affine_grid(theta, x.shape).to(x.device)
     x = F.grid_sample(x, grid)
@@ -557,7 +576,7 @@ def rand_flip(x, param):
     prob = param.prob_flip
     set_seed_DiffAug(param)
     randf = torch.rand(x.size(0), 1, 1, 1, device=x.device)
-    if param.Siamese: # Siamese augmentation:
+    if param.Siamese:  # Siamese augmentation:
         randf[:] = randf[0]
     return torch.where(randf < prob, x.flip(3), x)
 
@@ -568,7 +587,7 @@ def rand_brightness(x, param):
     randb = torch.rand(x.size(0), 1, 1, 1, dtype=x.dtype, device=x.device)
     if param.Siamese:  # Siamese augmentation:
         randb[:] = randb[0]
-    x = x + (randb - 0.5)*ratio
+    x = x + (randb - 0.5) * ratio
     return x
 
 
@@ -648,4 +667,3 @@ AUGMENT_FNS = {
     'scale': [rand_scale],
     'rotate': [rand_rotate],
 }
-

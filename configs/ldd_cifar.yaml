@@ -1,0 +1,7 @@
+use_wandb: true
+dataset: "CIFAR10"
+model: MLP
+exp_name: "ldd_cifar"
+ipc: 10
+num_exp: 3
+Iteration: 100
