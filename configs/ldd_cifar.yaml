@@ -1,7 +1,8 @@
-use_wandb: true
+use_wandb: false
 dataset: "CIFAR10"
 model: MLP
 exp_name: "ldd_cifar"
 ipc: 10
-num_exp: 3
-Iteration: 100
+num_exp: 1
+Iteration: 500
+num_eval: 5
